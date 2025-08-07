@@ -1,54 +1,53 @@
+import streamlit as st
 import pandas as pd
 import plotly.express as px
 
-# Step 1: Upload your file
-uploaded_file = 'your_file.csv'  # Replace with actual filename
+st.set_page_config(layout="wide", page_title="State Notification Heatmap", page_icon="🗺️")
+st.title("🗺️ Heat Map of Notifications by State")
 
-# Step 2: Read only first two columns (district and count)
-df = pd.read_csv(uploaded_file, usecols=[0, 1], encoding='utf-8')
+# Upload section
+uploaded_file = st.file_uploader("📤 Upload your district-wise CSV file", type=["csv"])
 
-# Step 3: Rename columns to standard names
-df.columns = ['district', 'count']
+if uploaded_file:
+    # Read file, assuming the first row is header but names might be wrong — we don't care
+    df = pd.read_csv(uploaded_file, usecols=[0, 1], skiprows=1, header=None)
+    df.columns = ['district', 'count']  # Rename to standard names
 
-# Step 4: Drop rows where count is missing or zero
-df.dropna(subset=['district', 'count'], inplace=True)
-df = df[df['count'] > 0]
+    # Clean and filter
+    df.dropna(subset=['district', 'count'], inplace=True)
+    df = df[df['count'] > 0]
 
-# Step 5: Map district to state
-def get_state_from_district(district):
-    mapping = {
-        'Adilabad': 'Telangana',
-        'Agar Malwa': 'Madhya Pradesh',
-        'Agra': 'Uttar Pradesh',
-        'Ahmedabad': 'Gujarat',
-        # Add all other mappings here
-    }
-    return mapping.get(district.strip(), 'Unknown')
+    # Map district to state
+    def get_state_from_district(district):
+        mapping = {
+            'Adilabad': 'Telangana',
+            'Agar Malwa': 'Madhya Pradesh',
+            'Agra': 'Uttar Pradesh',
+            'Ahmedabad': 'Gujarat',
+            # Add the full mapping based on your CSV here
+        }
+        return mapping.get(district.strip(), 'Unknown')
 
-df['state'] = df['district'].apply(get_state_from_district)
+    df['state'] = df['district'].apply(get_state_from_district)
 
-# Step 6: Group by state and sum
-state_data = df.groupby('state')['count'].sum().reset_index()
+    # Group by state
+    state_data = df.groupby('state')['count'].sum().reset_index()
+    state_data.sort_values(by='count', ascending=False, inplace=True)
 
-# Step 7: Sort descending
-state_data.sort_values(by='count', ascending=False, inplace=True)
+    # Plot heatmap
+    fig = px.bar(
+        state_data,
+        y='state',
+        x='count',
+        orientation='h',
+        color='count',
+        color_continuous_scale='YlOrRd',
+        title='Heat Map of Notifications Received by State'
+    )
 
-# Step 8: Plot heatmap using Plotly
-fig = px.bar(
-    state_data,
-    y='state',
-    x='count',
-    orientation='h',
-    color='count',
-    color_continuous_scale='YlOrRd',
-    title='Heat Map of Notifications Received by State'
-)
+    st.plotly_chart(fig, use_container_width=True)
 
-fig.update_layout(
-    xaxis_title='Notification Count',
-    yaxis_title='State',
-    coloraxis_colorbar=dict(title='Count'),
-    height=800
-)
+    st.success("✅ Heatmap generated successfully!")
 
-fig.show()
+else:
+    st.info("📎 Please upload a CSV file with district-wise notification counts.")
