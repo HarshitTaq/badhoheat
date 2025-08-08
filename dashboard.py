@@ -59,4 +59,11 @@ for i, val in enumerate(agg["value"]):
 
 fig.update_layout(
     title="Heat Map of Notifications Received",
-    xaxis_title="", ya_
+    xaxis_title="", yaxis_title="",
+    xaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
+    yaxis=dict(autorange="reversed"),
+    height=bar_height,
+    margin=dict(l=150, r=40, t=60, b=20)
+)
+
+st.plotly_chart(fig, use_container_width=True)
