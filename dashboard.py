@@ -1,65 +1,39 @@
-import streamlit as st
-import pandas as pd
-import plotly.express as px
+import numpy as np
+import plotly.graph_objects as go
 
-st.set_page_config(layout="wide", page_title="Notification Heatmap", page_icon="🗺️")
-st.title("📊 Heat Map")
+# agg must already be: label | value, sorted desc
+bar_height = min(max(agg.shape[0] * 26, 500), 3800)
 
-st.markdown("""
-Upload a `.csv` or `.xlsx` with **two columns of data**:
-- First column: text labels (any names)
-- Second column: numeric values
+# 1-column heatmap (centered), values descending (top = max)
+z = np.array(agg["value"], dtype=float).reshape(-1, 1)
+y_labels = agg["label"].tolist()
 
-Headers (if any) are ignored. Only the **first two columns** are used.
-""")
-
-uploaded_file = st.file_uploader("Upload your file", type=["csv", "xlsx"])
-
-if not uploaded_file:
-    st.info("Waiting for a file…")
-    st.stop()
-
-# ---- READ FILE (first two cols, ignore header row) ----
-if uploaded_file.name.lower().endswith(".csv"):
-    raw = pd.read_csv(uploaded_file, header=None)
-else:
-    raw = pd.read_excel(uploaded_file, header=None)
-
-# take only first two columns; skip the first row (assumed header-ish)
-df = raw.iloc[1:, [0, 1]].copy()
-df.columns = ["label", "value"]  # neutral names
-
-# clean
-df["label"] = df["label"].astype(str).str.strip()
-df["value"] = pd.to_numeric(df["value"], errors="coerce")
-df = df.dropna(subset=["label", "value"])
-df = df[df["value"] > 0]
-
-# group by whatever is in col 1, sum values
-agg = df.groupby("label", as_index=False)["value"].sum()
-
-# sort by value desc
-agg = agg.sort_values("value", ascending=False)
-
-# dynamic height so long lists fit (cap height to avoid going absurd)
-bar_height = min(max(agg.shape[0] * 22, 400), 3500)
-
-fig = px.bar(
-    agg,
-    y="label",
-    x="value",
-    orientation="h",
-    color="value",
-    color_continuous_scale="YlOrRd",
-    title="Notifications (by first-column labels)"
+fig = go.Figure(
+    data=go.Heatmap(
+        z=z,
+        x=["Count"],                # single centered column
+        y=y_labels,
+        colorscale="YlOrRd",
+        colorbar=dict(title="Count"),
+        showscale=True
+    )
 )
+
+# add value labels inside the cells
+for i, val in enumerate(agg["value"]):
+    fig.add_annotation(
+        x="Count", y=y_labels[i],
+        text=str(int(val)) if float(val).is_integer() else f"{val}",
+        showarrow=False, font=dict(size=12)
+    )
+
 fig.update_layout(
-    xaxis_title="count",
-    yaxis_title="",
+    title="Heat Map of Notifications Received",
+    xaxis_title="", yaxis_title="",
+    xaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
+    yaxis=dict(autorange="reversed"),   # keep top = largest
     height=bar_height,
-    coloraxis_colorbar=dict(title="count"),
-    margin=dict(l=10, r=10, t=60, b=10)
+    margin=dict(l=120, r=40, t=60, b=20)
 )
 
 st.plotly_chart(fig, use_container_width=True)
-st.success("✅ Heatmap generated.")
