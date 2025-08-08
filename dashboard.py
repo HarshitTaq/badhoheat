@@ -44,8 +44,7 @@ fig = go.Figure(
         x=["Count"],  # single centered column
         y=y_labels,
         colorscale="YlOrRd",
-        colorbar=dict(title="Count"),
-        showscale=True
+        showscale=False, 
     )
 )
 
