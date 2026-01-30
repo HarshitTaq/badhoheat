@@ -17,8 +17,7 @@ if uploaded_file is not None:
     # Standardize column names
     df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
 
-    st.subheader("Raw Data Preview")
-    st.dataframe(df.head())
+
 
     # Check required columns
     required_cols = ['submission_id', 'question', 'risk', 'observation', 'team_impacted']
