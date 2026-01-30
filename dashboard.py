@@ -60,7 +60,7 @@ if uploaded_file is not None:
         obs_counts = question_df['observation'].value_counts()
         fig1, ax1 = plt.subplots()
         ax1.pie(obs_counts, labels=obs_counts.index, autopct='%1.1f%%')
-        ax1.set_title("Observation Distribution")
+        
         st.pyplot(fig1)
 
         # --- Team Impacted Breakdown ---
