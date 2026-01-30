@@ -3,10 +3,8 @@ import pandas as pd
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-# Dashboard Title
 st.title("Grandiose Audit Dashboard")
 
-# File uploader
 uploaded_file = st.file_uploader("Upload your audit data file", type=["csv", "xlsx"])
 
 if uploaded_file is not None:
@@ -19,23 +17,26 @@ if uploaded_file is not None:
     st.subheader("Raw Data Preview")
     st.dataframe(df.head())
 
-    # --- Deduplicate by Submission Id ---
-    dedup_df = df.groupby('Submission Id').agg({
+    # Clean Team Impacted if it's comma-separated
+    df['Team Impacted'] = df['Team Impacted'].astype(str)
+
+    # Deduplicate by Submission Id + Question
+    question_df = df.groupby(['Submission Id', 'Question']).agg({
         'Risk': 'first',
         'Observation': 'first'
     }).reset_index()
 
     # --- KPI Metrics ---
     st.subheader("Key Metrics")
-    total_submissions = dedup_df['Submission Id'].nunique()
-    high_risk = (dedup_df['Risk'] == "High Risk").sum()
-    medium_risk = (dedup_df['Risk'] == "Medium Risk").sum()
-    low_risk = (dedup_df['Risk'] == "Low Risk").sum()
-    new_obs = (dedup_df['Observation'] == "New").sum()
-    repeated_obs = (dedup_df['Observation'] == "Repeated").sum()
+    total_questions = question_df.shape[0]
+    high_risk = (question_df['Risk'] == "High Risk").sum()
+    medium_risk = (question_df['Risk'] == "Medium Risk").sum()
+    low_risk = (question_df['Risk'] == "Low Risk").sum()
+    new_obs = (question_df['Observation'] == "New").sum()
+    repeated_obs = (question_df['Observation'] == "Repeated").sum()
 
     col1, col2, col3 = st.columns(3)
-    col1.metric("Total Submissions", total_submissions)
+    col1.metric("Total Questions", total_questions)
     col2.metric("High Risks", high_risk)
     col3.metric("Medium Risks", medium_risk)
 
@@ -46,41 +47,35 @@ if uploaded_file is not None:
 
     # --- Risk Distribution ---
     st.subheader("Risk Distribution")
-    risk_counts = dedup_df['Risk'].value_counts()
+    risk_counts = question_df['Risk'].value_counts()
     st.bar_chart(risk_counts)
-
-    # --- Risks by Team Impacted ---
-    st.subheader("Risks by Team Impacted")
-    risks_by_team = df.groupby(['Team Impacted', 'Risk']).size().unstack(fill_value=0)
-    st.dataframe(risks_by_team)
-    st.bar_chart(risks_by_team)
 
     # --- Observation Distribution ---
     st.subheader("Observation Distribution")
-    obs_counts = dedup_df['Observation'].value_counts()
-    obs_counts_numeric = obs_counts.astype(float)
-    st.pyplot(plt.figure(figsize=(5,5)))
-    plt.pie(obs_counts_numeric, labels=obs_counts_numeric.index, autopct='%1.1f%%')
-    plt.title("Observation Distribution")
-    st.pyplot(plt)
+    obs_counts = question_df['Observation'].value_counts()
+    fig1, ax1 = plt.subplots()
+    ax1.pie(obs_counts, labels=obs_counts.index, autopct='%1.1f%%')
+    ax1.set_title("Observation Distribution")
+    st.pyplot(fig1)
 
-    # --- Observations by Team Impacted ---
-    st.subheader("Observations by Team Impacted")
-    obs_by_team = df.groupby(['Team Impacted', 'Observation']).size().unstack(fill_value=0)
-    st.dataframe(obs_by_team)
-    st.bar_chart(obs_by_team)
+    # --- Team Impacted Breakdown ---
+    st.subheader("Team Impacted by Questions")
+    team_question_df = df[['Submission Id', 'Question', 'Team Impacted']].drop_duplicates()
+    team_question_df['Team Impacted'] = team_question_df['Team Impacted'].str.split(',')
 
-    # --- Heatmap of Risks vs Teams ---
-    st.subheader("Heatmap: Risks vs Teams")
-    fig, ax = plt.subplots(figsize=(10,6))
-    sns.heatmap(risks_by_team, annot=True, fmt="d", cmap="Blues", ax=ax)
-    st.pyplot(fig)
+    exploded = team_question_df.explode('Team Impacted')
+    exploded['Team Impacted'] = exploded['Team Impacted'].str.strip()
+    team_counts = exploded.groupby('Team Impacted')['Question'].nunique().sort_values(ascending=False)
+    st.bar_chart(team_counts)
 
-    # --- Line Chart: Risk Trend over Time ---
-    st.subheader("Risk Trend Over Time")
-    if 'Started At' in df.columns:
-        df['Started At'] = pd.to_datetime(df['Started At'], errors='coerce')
-        risk_trend = df.groupby([df['Started At'].dt.date, 'Risk']).size().unstack(fill_value=0)
-        st.line_chart(risk_trend)
+    # --- Heatmap: Risk vs Team Impacted ---
+    st.subheader("Heatmap: Risk vs Team Impacted")
+    df['Team Impacted'] = df['Team Impacted'].str.split(',')
+    exploded_risk = df.explode('Team Impacted')
+    exploded_risk['Team Impacted'] = exploded_risk['Team Impacted'].str.strip()
+    heatmap_data = exploded_risk.groupby(['Team Impacted', 'Risk']).size().unstack(fill_value=0)
+    fig2, ax2 = plt.subplots(figsize=(10,6))
+    sns.heatmap(heatmap_data, annot=True, fmt="d", cmap="Blues", ax=ax2)
+    st.pyplot(fig2)
 
-    st.success("Dashboard generated successfully for Grandiose!")
+    st.success("Dashboard generated successfully with corrected logic!")
