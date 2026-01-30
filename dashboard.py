@@ -1,68 +1,76 @@
 import streamlit as st
 import pandas as pd
-import plotly.graph_objects as go
-import numpy as np
+import seaborn as sns
+import matplotlib.pyplot as plt
 
-st.set_page_config(layout="wide", page_title="Notification Heatmap", page_icon="🗺️")
-st.title("📊 Heat Map")
+# Dashboard Title
+st.title("Grandiose Audit Dashboard")
 
-uploaded_file = st.file_uploader("Upload CSV or Excel", type=["csv", "xlsx"])
+# File uploader (CSV or XLSX)
+uploaded_file = st.file_uploader("Upload your audit data file", type=["csv", "xlsx"])
 
-if not uploaded_file:
-    st.info("Please upload a file")
-    st.stop()
+if uploaded_file is not None:
+    # Load data
+    if uploaded_file.name.endswith(".csv"):
+        df = pd.read_csv(uploaded_file)
+    else:
+        df = pd.read_excel(uploaded_file)
 
-# Read first two columns, skip header row
-if uploaded_file.name.lower().endswith(".csv"):
-    raw = pd.read_csv(uploaded_file, header=None)
-else:
-    raw = pd.read_excel(uploaded_file, header=None)
+    st.subheader("Raw Data Preview")
+    st.dataframe(df.head())
 
-df = raw.iloc[1:, [0, 1]].copy()
-df.columns = ["label", "value"]
+    # --- KPI Metrics ---
+    st.subheader("Key Metrics")
+    total_submissions = df['Submission Id'].nunique()
+    high_risk = (df['Risk'] == "High Risk").sum()
+    medium_risk = (df['Risk'] == "Medium Risk").sum()
+    low_risk = (df['Risk'] == "Low Risk").sum()
+    new_obs = (df['Observation'] == "New").sum()
+    repeated_obs = (df['Observation'] == "Repeated").sum()
 
-# Clean
-df["label"] = df["label"].astype(str).str.strip()
-df["value"] = pd.to_numeric(df["value"], errors="coerce")
-df = df.dropna(subset=["label", "value"])
-df = df[df["value"] > 0]
+    col1, col2, col3 = st.columns(3)
+    col1.metric("Total Submissions", total_submissions)
+    col2.metric("High Risks", high_risk)
+    col3.metric("Medium Risks", medium_risk)
 
-# Group and sort
-agg = df.groupby("label", as_index=False)["value"].sum()
-agg = agg.sort_values("value", ascending=False)
+    col4, col5, col6 = st.columns(3)
+    col4.metric("Low Risks", low_risk)
+    col5.metric("New Observations", new_obs)
+    col6.metric("Repeated Observations", repeated_obs)
 
-# Auto height
-bar_height = min(max(agg.shape[0] * 26, 500), 3800)
+    # --- Risk Distribution ---
+    st.subheader("Risk Distribution")
+    risk_counts = df['Risk'].value_counts()
+    st.bar_chart(risk_counts)
 
-# Prepare heatmap values
-z = np.array(agg["value"], dtype=float).reshape(-1, 1)
-y_labels = agg["label"].tolist()
+    # --- Risks by Team Impacted ---
+    st.subheader("Risks by Team Impacted")
+    risks_by_team = df.groupby(['Team Impacted', 'Risk']).size().unstack(fill_value=0)
+    st.dataframe(risks_by_team)
+    st.bar_chart(risks_by_team)
 
-fig = go.Figure(
-    data=go.Heatmap(
-        z=z,
-        x=["Count"],  # single centered column
-        y=y_labels,
-        colorscale="YlOrRd",
-        showscale=False, 
-    )
-)
+    # --- Observations Distribution ---
+    st.subheader("Observation Distribution")
+    obs_counts = df['Observation'].value_counts()
+    st.pie_chart(obs_counts)
 
-# Add text annotations
-for i, val in enumerate(agg["value"]):
-    fig.add_annotation(
-        x="Count", y=y_labels[i],
-        text=str(int(val)) if float(val).is_integer() else f"{val}",
-        showarrow=False, font=dict(size=12, color="black")
-    )
+    # --- Observations by Team Impacted ---
+    st.subheader("Observations by Team Impacted")
+    obs_by_team = df.groupby(['Team Impacted', 'Observation']).size().unstack(fill_value=0)
+    st.dataframe(obs_by_team)
+    st.bar_chart(obs_by_team)
 
-fig.update_layout(
-    title="Heat Map of Notifications Received",
-    xaxis_title="", yaxis_title="",
-    xaxis=dict(showticklabels=False, showgrid=False, zeroline=False),
-    yaxis=dict(autorange="reversed"),
-    height=bar_height,
-    margin=dict(l=150, r=40, t=60, b=20)
-)
+    # --- Heatmap of Risks vs Teams ---
+    st.subheader("Heatmap: Risks vs Teams")
+    fig, ax = plt.subplots(figsize=(10,6))
+    sns.heatmap(risks_by_team, annot=True, fmt="d", cmap="Blues", ax=ax)
+    st.pyplot(fig)
 
-st.plotly_chart(fig, use_container_width=True)
+    # --- Line Chart: Risk Trend over Time ---
+    st.subheader("Risk Trend Over Time")
+    if 'Started At' in df.columns:
+        df['Started At'] = pd.to_datetime(df['Started At'], errors='coerce')
+        risk_trend = df.groupby([df['Started At'].dt.date, 'Risk']).size().unstack(fill_value=0)
+        st.line_chart(risk_trend)
+
+    st.success("Dashboard generated successfully for Grandiose!")
