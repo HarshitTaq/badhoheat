@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 # Dashboard Title
 st.title("Grandiose Audit Dashboard")
 
-# File uploader (CSV or XLSX)
+# File uploader
 uploaded_file = st.file_uploader("Upload your audit data file", type=["csv", "xlsx"])
 
 if uploaded_file is not None:
@@ -19,14 +19,20 @@ if uploaded_file is not None:
     st.subheader("Raw Data Preview")
     st.dataframe(df.head())
 
+    # --- Deduplicate by Submission Id ---
+    dedup_df = df.groupby('Submission Id').agg({
+        'Risk': 'first',
+        'Observation': 'first'
+    }).reset_index()
+
     # --- KPI Metrics ---
     st.subheader("Key Metrics")
-    total_submissions = df['Submission Id'].nunique()
-    high_risk = (df['Risk'] == "High Risk").sum()
-    medium_risk = (df['Risk'] == "Medium Risk").sum()
-    low_risk = (df['Risk'] == "Low Risk").sum()
-    new_obs = (df['Observation'] == "New").sum()
-    repeated_obs = (df['Observation'] == "Repeated").sum()
+    total_submissions = dedup_df['Submission Id'].nunique()
+    high_risk = (dedup_df['Risk'] == "High Risk").sum()
+    medium_risk = (dedup_df['Risk'] == "Medium Risk").sum()
+    low_risk = (dedup_df['Risk'] == "Low Risk").sum()
+    new_obs = (dedup_df['Observation'] == "New").sum()
+    repeated_obs = (dedup_df['Observation'] == "Repeated").sum()
 
     col1, col2, col3 = st.columns(3)
     col1.metric("Total Submissions", total_submissions)
@@ -40,7 +46,7 @@ if uploaded_file is not None:
 
     # --- Risk Distribution ---
     st.subheader("Risk Distribution")
-    risk_counts = df['Risk'].value_counts()
+    risk_counts = dedup_df['Risk'].value_counts()
     st.bar_chart(risk_counts)
 
     # --- Risks by Team Impacted ---
@@ -49,10 +55,14 @@ if uploaded_file is not None:
     st.dataframe(risks_by_team)
     st.bar_chart(risks_by_team)
 
-    # --- Observations Distribution ---
+    # --- Observation Distribution ---
     st.subheader("Observation Distribution")
-    obs_counts = df['Observation'].value_counts()
-    st.pie_chart(obs_counts)
+    obs_counts = dedup_df['Observation'].value_counts()
+    obs_counts_numeric = obs_counts.astype(float)
+    st.pyplot(plt.figure(figsize=(5,5)))
+    plt.pie(obs_counts_numeric, labels=obs_counts_numeric.index, autopct='%1.1f%%')
+    plt.title("Observation Distribution")
+    st.pyplot(plt)
 
     # --- Observations by Team Impacted ---
     st.subheader("Observations by Team Impacted")
