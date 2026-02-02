@@ -49,28 +49,33 @@ if uploaded_file is not None:
     risk_counts = question_df['risk'].value_counts().reindex(risk_order, fill_value=0)
 
     fig, ax = plt.subplots()
-    colors = ["red", "yellow", "green"]
+    colors = ["red", "#FFBF00", "green"]  # Red, Amber, Green
     ax.bar(risk_counts.index, risk_counts.values, color=colors)
     ax.set_ylabel("Count")
     ax.set_title("Risk Distribution (High → Medium → Low)")
     st.pyplot(fig)
-
     st.dataframe(risk_counts.rename("Count"))
 
     # --- Observation Distribution ---
     st.subheader("Observation Distribution")
     obs_counts = question_df['observation'].value_counts()
     fig1, ax1 = plt.subplots()
-    ax1.pie(obs_counts, labels=obs_counts.index, autopct='%1.1f%%')
+    ax1.pie(obs_counts, labels=obs_counts.index, colors=["darkblue", "orange"], autopct='%1.1f%%')
     ax1.set_title("Observation Distribution")
     st.pyplot(fig1)
-
     st.dataframe(obs_counts.rename("Count"))
 
     # --- Observation by Question ---
     st.subheader("Observation Distribution by Question")
     obs_by_question = question_df.groupby(['question', 'observation']).size().unstack(fill_value=0)
-    st.bar_chart(obs_by_question)
+    obs_by_question['Total'] = obs_by_question.sum(axis=1)
+    obs_by_question = obs_by_question.sort_values(by='Total', ascending=False).drop(columns='Total')
+
+    fig2, ax2 = plt.subplots(figsize=(10, 5))
+    obs_by_question.plot(kind='bar', stacked=True, color=["darkblue", "orange"], ax=ax2)
+    ax2.set_title("Observation by Question (Sorted)")
+    ax2.set_ylabel("Count")
+    st.pyplot(fig2)
     st.dataframe(obs_by_question)
 
     # --- Observation by Store ---
@@ -82,7 +87,14 @@ if uploaded_file is not None:
         filtered_df = question_df
 
     obs_by_store = filtered_df.groupby(['store', 'observation']).size().unstack(fill_value=0)
-    st.bar_chart(obs_by_store)
+    obs_by_store['Total'] = obs_by_store.sum(axis=1)
+    obs_by_store = obs_by_store.sort_values(by='Total', ascending=False).drop(columns='Total')
+
+    fig3, ax3 = plt.subplots(figsize=(8, 4))
+    obs_by_store.plot(kind='bar', stacked=True, color=["darkblue", "orange"], ax=ax3)
+    ax3.set_title("Observation by Store (Sorted)")
+    ax3.set_ylabel("Count")
+    st.pyplot(fig3)
     st.dataframe(obs_by_store)
 
     # --- Team Impacted by Questions ---
@@ -94,11 +106,10 @@ if uploaded_file is not None:
         exploded['team_impacted'] = exploded['team_impacted'].str.strip()
         team_counts = exploded.groupby('team_impacted')['question'].nunique().sort_values(ascending=False)
 
-        fig2, ax2 = plt.subplots()
-        team_counts.plot(kind="bar", ax=ax2)
-        ax2.set_title("Team Impacted by Questions (Descending Order)")
-        st.pyplot(fig2)
-
+        fig4, ax4 = plt.subplots()
+        team_counts.plot(kind="bar", ax=ax4)
+        ax4.set_title("Team Impacted by Questions (Descending Order)")
+        st.pyplot(fig4)
         st.dataframe(team_counts.rename("Questions Count"))
 
     # --- Heatmap: Risk vs Team Impacted ---
@@ -107,19 +118,18 @@ if uploaded_file is not None:
     exploded_risk = df.explode('team_impacted')
     exploded_risk['team_impacted'] = exploded_risk['team_impacted'].str.strip()
     heatmap_data = exploded_risk.groupby(['team_impacted', 'risk']).size().unstack(fill_value=0)
+    heatmap_data = heatmap_data.reindex(columns=["High Risk", "Medium Risk", "Low Risk"], fill_value=0)
 
-    fig3, ax3 = plt.subplots(figsize=(10,6))
-    sns.heatmap(heatmap_data, annot=True, fmt="d", cmap="Blues", ax=ax3)
-    st.pyplot(fig3)
-
+    fig5, ax5 = plt.subplots(figsize=(10, 6))
+    sns.heatmap(
+        heatmap_data,
+        annot=True,
+        fmt="d",
+        cmap=sns.color_palette(["#FF0000", "#FFBF00", "#00FF00"]),
+        ax=ax5
+    )
+    ax5.set_title("Heatmap: Risk vs Team Impacted")
+    st.pyplot(fig5)
     st.dataframe(heatmap_data)
 
-    # --- Line Chart: Risk Trend over Time ---
-    st.subheader("Risk Trend Over Time")
-    if 'started_at' in df.columns:
-        df['started_at'] = pd.to_datetime(df['started_at'], errors='coerce')
-        risk_trend = df.groupby([df['started_at'].dt.date, 'risk']).size().unstack(fill_value=0)
-        st.line_chart(risk_trend)
-        st.dataframe(risk_trend)
-
-    st.success("Dashboard generated successfully with full layout and tables!")
+    st.success("Dashboard generated successfully with full layout, sorting, and custom colors!")
