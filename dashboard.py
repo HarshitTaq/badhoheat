@@ -17,36 +17,22 @@ if uploaded_file is not None:
     # Standardize column names
     df.columns = df.columns.str.strip().str.lower().str.replace(' ', '_')
 
-    # Deduplicate by submission_id + question
-    if 'submission_id' in df.columns and 'question' in df.columns:
-        question_df = df.groupby(['submission_id', 'question']).agg({
-            'risk': 'first',
-            'observation': 'first',
-            'store': 'first',
-            'team_impacted': 'first'
-        }).reset_index()
-    else:
-        st.error("Required columns missing: submission_id and question")
-        st.stop()
-
     # --- KPI Metrics ---
     st.subheader("Key Metrics")
 
-    # Risks side by side
     col1, col2, col3 = st.columns(3)
-    col1.metric("High Risks", (question_df['risk'] == "High Risk").sum())
-    col2.metric("Medium Risks", (question_df['risk'] == "Medium Risk").sum())
-    col3.metric("Low Risks", (question_df['risk'] == "Low Risk").sum())
+    col1.metric("High Risks", (df['risk'] == "High Risk").sum())
+    col2.metric("Medium Risks", (df['risk'] == "Medium Risk").sum())
+    col3.metric("Low Risks", (df['risk'] == "Low Risk").sum())
 
-    # Observations side by side
     col4, col5 = st.columns(2)
-    col4.metric("New Observations", (question_df['observation'] == "New").sum())
-    col5.metric("Repeated Observations", (question_df['observation'] == "Repeated").sum())
+    col4.metric("New Observations", (df['observation'] == "New").sum())
+    col5.metric("Repeated Observations", (df['observation'] == "Repeated").sum())
 
     # --- 1) Risk Distribution ---
     st.subheader("Risk Distribution")
     risk_order = ["High Risk", "Medium Risk", "Low Risk"]
-    risk_counts = question_df['risk'].value_counts().reindex(risk_order, fill_value=0)
+    risk_counts = df['risk'].value_counts().reindex(risk_order, fill_value=0)
 
     fig, ax = plt.subplots()
     colors = ["red", "#FFBF00", "green"]  # Red, Amber, Green
@@ -72,7 +58,7 @@ if uploaded_file is not None:
 
     # --- 3) Observation Distribution ---
     st.subheader("Observation Distribution")
-    obs_counts = question_df['observation'].value_counts()
+    obs_counts = df['observation'].value_counts()
     fig3, ax3 = plt.subplots()
     ax3.pie(obs_counts, labels=obs_counts.index, colors=["#1f77b4", "orange"], autopct='%1.1f%%')
     ax3.set_title("Observation Distribution")
@@ -81,7 +67,7 @@ if uploaded_file is not None:
 
     # --- 4) Observation by Question ---
     st.subheader("Observation Distribution by Question")
-    obs_by_question = question_df.groupby(['question', 'observation']).size().unstack(fill_value=0)
+    obs_by_question = df.groupby(['question', 'observation']).size().unstack(fill_value=0)
     if 'New' in obs_by_question.columns:
         obs_by_question = obs_by_question.sort_values(by='New', ascending=False)
 
@@ -94,11 +80,11 @@ if uploaded_file is not None:
 
     # --- 5) Observation by Store ---
     st.subheader("Observation Distribution by Store")
-    store_filter = st.selectbox("Filter by Store", options=["All"] + list(question_df['store'].dropna().unique()))
+    store_filter = st.selectbox("Filter by Store", options=["All"] + list(df['store'].dropna().unique()))
     if store_filter != "All":
-        filtered_df = question_df[question_df['store'] == store_filter]
+        filtered_df = df[df['store'] == store_filter]
     else:
-        filtered_df = question_df
+        filtered_df = df
 
     obs_by_store = filtered_df.groupby(['store', 'observation']).size().unstack(fill_value=0)
     if 'New' in obs_by_store.columns:
@@ -114,24 +100,16 @@ if uploaded_file is not None:
     # --- 6) Team Impacted by Questions ---
     st.subheader("Team Impacted by Questions")
 
-    if 'team_impacted' in df.columns:
-        # Deduplicate before splitting
-        team_question_df = df[['submission_id', 'question', 'team_impacted']].drop_duplicates()
+    team_question_df = df[['submission_id', 'question', 'team_impacted']].drop_duplicates(subset=['submission_id','question','team_impacted'])
+    team_question_df['team_impacted'] = team_question_df['team_impacted'].astype(str).str.split(',')
+    exploded = team_question_df.explode('team_impacted')
+    exploded['team_impacted'] = exploded['team_impacted'].str.strip()
 
-        # Split into multiple rows
-        team_question_df['team_impacted'] = team_question_df['team_impacted'].astype(str).str.split(',')
-        exploded = team_question_df.explode('team_impacted')
-        exploded['team_impacted'] = exploded['team_impacted'].str.strip()
+    team_counts = exploded.groupby('team_impacted').size().sort_values(ascending=False)
 
-        # Count every occurrence (submissions × questions × team selections)
-        team_counts = exploded.groupby('team_impacted').size().sort_values(ascending=False)
-
-        # Plot
-        fig6, ax6 = plt.subplots()
-        team_counts.plot(kind="bar", color="#1f77b4", ax=ax6)
-        ax6.set_title("Team Impacted by Questions (Total Occurrences)")
-        ax6.set_ylabel("Count")
-        st.pyplot(fig6)
-
-        # Table
-        st.dataframe(team_counts.rename("Total Occurrences"))
+    fig6, ax6 = plt.subplots()
+    team_counts.plot(kind="bar", color="#1f77b4", ax=ax6)
+    ax6.set_title("Team Impacted by Questions (Total Occurrences)")
+    ax6.set_ylabel("Count")
+    st.pyplot(fig6)
+    st.dataframe(team_counts.rename("Total Occurrences"))
