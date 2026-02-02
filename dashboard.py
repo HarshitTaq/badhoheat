@@ -109,18 +109,27 @@ if uploaded_file is not None:
     st.pyplot(fig5)
     st.dataframe(obs_by_store)
 
-    # --- 6) Team Impacted by Questions ---
-    st.subheader("Team Impacted by Questions")
-    team_question_df = df[['submission_id', 'question', 'team_impacted']].drop_duplicates()
+# --- Team Impacted by Questions ---
+st.subheader("Team Impacted by Questions")
+
+if 'team_impacted' in df.columns:
+    # Deduplicate only on submission_id + question
+    team_question_df = df[['submission_id', 'question', 'team_impacted']].drop_duplicates(subset=['submission_id','question'])
+
+    # Split comma-separated teams into multiple rows
     team_question_df['team_impacted'] = team_question_df['team_impacted'].astype(str).str.split(',')
     exploded = team_question_df.explode('team_impacted')
     exploded['team_impacted'] = exploded['team_impacted'].str.strip()
+
+    # Count distinct questions per team
     team_counts = exploded.groupby('team_impacted')['question'].nunique().sort_values(ascending=False)
 
-    fig6, ax6 = plt.subplots()
-    team_counts.plot(kind="bar", color="#1f77b4", ax=ax6)
-    ax6.set_title("Team Impacted by Questions (Descending Order)")
-    st.pyplot(fig6)
-    st.dataframe(team_counts.rename("Questions Count"))
+    # Plot
+    fig, ax = plt.subplots()
+    team_counts.plot(kind="bar", color="#1f77b4", ax=ax)
+    ax.set_title("Team Impacted by Questions (Descending Order)")
+    ax.set_ylabel("Questions Count")
+    st.pyplot(fig)
 
-    st.success("Dashboard generated successfully with all customizations!")
+    # Table
+    st.dataframe(team_counts.rename("Questions Count"))
