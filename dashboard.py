@@ -113,18 +113,23 @@ if uploaded_file is not None:
 st.subheader("Team Impacted by Questions")
 
 if 'team_impacted' in df.columns:
-    team_question_df = df[['submission_id', 'question', 'team_impacted']].drop_duplicates()
+    # Deduplicate first, while team_impacted is still a string
+    team_question_df = df[['submission_id', 'question', 'team_impacted']].drop_duplicates(subset=['submission_id','question','team_impacted'])
+
+    # Now split into multiple rows
     team_question_df['team_impacted'] = team_question_df['team_impacted'].astype(str).str.split(',')
     exploded = team_question_df.explode('team_impacted')
     exploded['team_impacted'] = exploded['team_impacted'].str.strip()
 
-    # Count every occurrence (not just unique questions)
+    # Count every occurrence (submissions × questions × team selections)
     team_counts = exploded.groupby('team_impacted')['question'].count().sort_values(ascending=False)
 
+    # Plot
     fig, ax = plt.subplots()
     team_counts.plot(kind="bar", color="#1f77b4", ax=ax)
     ax.set_title("Team Impacted by Questions (Total Occurrences)")
     ax.set_ylabel("Count")
     st.pyplot(fig)
 
+    # Table
     st.dataframe(team_counts.rename("Total Occurrences"))
