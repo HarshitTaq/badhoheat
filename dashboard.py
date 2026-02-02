@@ -120,7 +120,8 @@ if uploaded_file is not None:
         filtered_df = df
 
     # Split into multiple rows
-    filtered_df['team_impacted'] = filtered_df['team_impacted'].astype(str).str.split(',')
+    filtered_df['team_impacted'] = filtered_df['team_impacted'].astype(str).apply(
+    lambda x: x.split(',') if ',' in x else [x])
     exploded = filtered_df.explode('team_impacted')
     exploded['team_impacted'] = exploded['team_impacted'].str.strip()
 
