@@ -109,33 +109,30 @@ if uploaded_file is not None:
     st.pyplot(fig5)
     st.dataframe(obs_by_store)
 
-    
+    # --- 6) Teams Impacted (Distinct Count) ---
+    st.subheader("Teams Impacted")
 
-
-    # --- Teams Impacted (Distinct Count) ---
-st.subheader("Teams Impacted")
-
-    # Add a filter by Question
+    # Filter by Question
     question_filter = st.selectbox("Filter by Question", options=["All"] + list(df['question'].dropna().unique()))
     if question_filter != "All":
         filtered_df = df[df['question'] == question_filter]
     else:
         filtered_df = df
 
-    # Split team_impacted into multiple rows
+    # Split into multiple rows
     filtered_df['team_impacted'] = filtered_df['team_impacted'].astype(str).str.split(',')
     exploded = filtered_df.explode('team_impacted')
     exploded['team_impacted'] = exploded['team_impacted'].str.strip()
 
-    # Just count distinct occurrences of each team (no maths beyond counting)
+    # Simple distinct count
     team_counts = exploded['team_impacted'].value_counts()
 
-    # Plot chart
-    fig, ax = plt.subplots()
-    team_counts.plot(kind="bar", color="#1f77b4", ax=ax)
-    ax.set_title("Teams Impacted (Distinct Count)")
-    ax.set_ylabel("Count")
-    st.pyplot(fig)
+    # Plot
+    fig6, ax6 = plt.subplots()
+    team_counts.plot(kind="bar", color="#1f77b4", ax=ax6)
+    ax6.set_title("Teams Impacted (Distinct Count)")
+    ax6.set_ylabel("Count")
+    st.pyplot(fig6)
 
     # Grid at bottom
     st.dataframe(team_counts.rename("Distinct Count"))
