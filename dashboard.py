@@ -82,7 +82,8 @@ if uploaded_file is not None:
     # --- 4) Observation by Question ---
     st.subheader("Observation Distribution by Question")
     obs_by_question = question_df.groupby(['question', 'observation']).size().unstack(fill_value=0)
-    obs_by_question = obs_by_question.sort_values(by='New', ascending=False)
+    if 'New' in obs_by_question.columns:
+        obs_by_question = obs_by_question.sort_values(by='New', ascending=False)
 
     fig4, ax4 = plt.subplots(figsize=(10, 5))
     obs_by_question.plot(kind='bar', stacked=True, color=["#1f77b4", "orange"], ax=ax4)
@@ -100,7 +101,8 @@ if uploaded_file is not None:
         filtered_df = question_df
 
     obs_by_store = filtered_df.groupby(['store', 'observation']).size().unstack(fill_value=0)
-    obs_by_store = obs_by_store.sort_values(by='New', ascending=False)
+    if 'New' in obs_by_store.columns:
+        obs_by_store = obs_by_store.sort_values(by='New', ascending=False)
 
     fig5, ax5 = plt.subplots(figsize=(8, 4))
     obs_by_store.plot(kind='bar', stacked=True, color=["#1f77b4", "orange"], ax=ax5)
@@ -109,27 +111,27 @@ if uploaded_file is not None:
     st.pyplot(fig5)
     st.dataframe(obs_by_store)
 
-# --- Team Impacted by Questions ---
-st.subheader("Team Impacted by Questions")
+    # --- 6) Team Impacted by Questions ---
+    st.subheader("Team Impacted by Questions")
 
-if 'team_impacted' in df.columns:
-    # Deduplicate first while team_impacted is still a string
-    team_question_df = df[['submission_id', 'question', 'team_impacted']].drop_duplicates()
+    if 'team_impacted' in df.columns:
+        # Deduplicate before splitting
+        team_question_df = df[['submission_id', 'question', 'team_impacted']].drop_duplicates()
 
-    # Now split into multiple rows
-    team_question_df['team_impacted'] = team_question_df['team_impacted'].astype(str).str.split(',')
-    exploded = team_question_df.explode('team_impacted')
-    exploded['team_impacted'] = exploded['team_impacted'].str.strip()
+        # Split into multiple rows
+        team_question_df['team_impacted'] = team_question_df['team_impacted'].astype(str).str.split(',')
+        exploded = team_question_df.explode('team_impacted')
+        exploded['team_impacted'] = exploded['team_impacted'].str.strip()
 
-    # Count every occurrence (submissions × questions × team selections)
-    team_counts = exploded.groupby('team_impacted').size().sort_values(ascending=False)
+        # Count every occurrence (submissions × questions × team selections)
+        team_counts = exploded.groupby('team_impacted').size().sort_values(ascending=False)
 
-    # Plot
-    fig, ax = plt.subplots()
-    team_counts.plot(kind="bar", color="#1f77b4", ax=ax)
-    ax.set_title("Team Impacted by Questions (Total Occurrences)")
-    ax.set_ylabel("Count")
-    st.pyplot(fig)
+        # Plot
+        fig6, ax6 = plt.subplots()
+        team_counts.plot(kind="bar", color="#1f77b4", ax=ax6)
+        ax6.set_title("Team Impacted by Questions (Total Occurrences)")
+        ax6.set_ylabel("Count")
+        st.pyplot(fig6)
 
-    # Table
-    st.dataframe(team_counts.rename("Total Occurrences"))
+        # Table
+        st.dataframe(team_counts.rename("Total Occurrences"))
