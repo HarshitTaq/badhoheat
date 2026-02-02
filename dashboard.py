@@ -56,7 +56,9 @@ if uploaded_file is not None:
 
     # --- 2) Heatmap: Risk vs Team Impacted ---
     st.subheader("Heatmap: Risk vs Team Impacted")
-    df['team_impacted'] = df['team_impacted'].astype(str).str.split(',')
+    df['team_impacted'] = df['team_impacted'].astype(str).apply(
+        lambda x: x.split(',') if ',' in x else [x]
+    )
     exploded_risk = df.explode('team_impacted')
     exploded_risk['team_impacted'] = exploded_risk['team_impacted'].str.strip()
     heatmap_data = exploded_risk.groupby(['team_impacted', 'risk']).size().unstack(fill_value=0)
@@ -94,11 +96,11 @@ if uploaded_file is not None:
     st.subheader("Observation Distribution by Store")
     store_filter = st.selectbox("Filter by Store", options=["All"] + list(question_df['store'].dropna().unique()))
     if store_filter != "All":
-        filtered_df = question_df[question_df['store'] == store_filter]
+        filtered_df_store = question_df[question_df['store'] == store_filter]
     else:
-        filtered_df = question_df
+        filtered_df_store = question_df
 
-    obs_by_store = filtered_df.groupby(['store', 'observation']).size().unstack(fill_value=0)
+    obs_by_store = filtered_df_store.groupby(['store', 'observation']).size().unstack(fill_value=0)
     if 'New' in obs_by_store.columns:
         obs_by_store = obs_by_store.sort_values(by='New', ascending=False)
 
@@ -115,14 +117,15 @@ if uploaded_file is not None:
     # Filter by Question
     question_filter = st.selectbox("Filter by Question", options=["All"] + list(df['question'].dropna().unique()))
     if question_filter != "All":
-        filtered_df = df[df['question'] == question_filter]
+        filtered_df_team = df[df['question'] == question_filter]
     else:
-        filtered_df = df
+        filtered_df_team = df
 
-    # Split into multiple rows
-    filtered_df['team_impacted'] = filtered_df['team_impacted'].astype(str).apply(
-    lambda x: x.split(',') if ',' in x else [x])
-    exploded = filtered_df.explode('team_impacted')
+    # Split into multiple rows (only split if comma exists)
+    filtered_df_team['team_impacted'] = filtered_df_team['team_impacted'].astype(str).apply(
+        lambda x: x.split(',') if ',' in x else [x]
+    )
+    exploded = filtered_df_team.explode('team_impacted')
     exploded['team_impacted'] = exploded['team_impacted'].str.strip()
 
     # Simple distinct count
