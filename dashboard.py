@@ -29,6 +29,12 @@ if uploaded_file is not None:
         st.error("Required columns missing: submission_id and question")
         st.stop()
 
+    # --- Total Distinct Submissions ---
+    st.subheader("Submission Overview")
+
+    total_submissions = df['submission_id'].nunique()
+    st.metric("Total Distinct Submissions", total_submissions)
+
     # --- KPI Metrics ---
     st.subheader("Key Metrics")
 
