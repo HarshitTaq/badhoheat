@@ -79,45 +79,6 @@ if uploaded_file is not None:
     st.pyplot(fig2)
     st.dataframe(heatmap_data)
 
-    # --- Heatmap: Risk vs Team Impacted ---
-    st.subheader("Heatmap: Risk vs Team Impacted")
-
-    # Work on a copy
-    heatmap_df = df[['submission_id', 'risk', 'team_impacted']].drop_duplicates()
-
-    # Split teams only for display, but keep risk counts aligned
-    heatmap_df['team_impacted'] = heatmap_df['team_impacted'].astype(str).apply(
-        lambda x: x.split(',') if ',' in x else [x]
-    )
-    exploded_heatmap = heatmap_df.explode('team_impacted')
-    exploded_heatmap['team_impacted'] = exploded_heatmap['team_impacted'].str.strip()
-
-    # Group by team and risk (each submission/question counted once)
-    heatmap_data = exploded_heatmap.groupby(['team_impacted', 'risk']).size().unstack(fill_value=0)
-    heatmap_data = heatmap_data.reindex(columns=["High Risk", "Medium Risk", "Low Risk"], fill_value=0)
-
-    fig2, ax2 = plt.subplots(figsize=(10, 6))
-    sns.heatmap(heatmap_data, annot=True, fmt="d", cmap="Blues", ax=ax2)
-    ax2.set_title("Heatmap: Risk vs Team Impacted")
-    st.pyplot(fig2)
-    st.dataframe(heatmap_data)
-
-
-    # --- 2) Heatmap: Risk vs Team Impacted ---
-    st.subheader("Heatmap: Risk vs Team Impacted")
-    df['team_impacted'] = df['team_impacted'].astype(str).apply(
-        lambda x: x.split(',') if ',' in x else [x]
-    )
-    exploded_risk = df.explode('team_impacted')
-    exploded_risk['team_impacted'] = exploded_risk['team_impacted'].str.strip()
-    heatmap_data = exploded_risk.groupby(['team_impacted', 'risk']).size().unstack(fill_value=0)
-    heatmap_data = heatmap_data.reindex(columns=["High Risk", "Medium Risk", "Low Risk"], fill_value=0)
-
-    fig2, ax2 = plt.subplots(figsize=(10, 6))
-    sns.heatmap(heatmap_data, annot=True, fmt="d", cmap="Blues", ax=ax2)
-    ax2.set_title("Heatmap: Risk vs Team Impacted")
-    st.pyplot(fig2)
-    st.dataframe(heatmap_data)
 
     # --- 3) Observation Distribution ---
     st.subheader("Observation Distribution")
