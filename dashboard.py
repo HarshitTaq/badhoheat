@@ -57,6 +57,31 @@ if uploaded_file is not None:
     # --- Heatmap: Risk vs Team Impacted ---
     st.subheader("Heatmap: Risk vs Team Impacted")
 
+    # Deduplicate by submission_id + risk + team_impacted
+    heatmap_df = df[['submission_id', 'risk', 'team_impacted']].drop_duplicates()
+
+    # Split team_impacted safely
+    heatmap_df['team_impacted'] = heatmap_df['team_impacted'].astype(str).apply(
+        lambda x: x.split(',') if ',' in x else [x]
+    )
+    exploded_heatmap = heatmap_df.explode('team_impacted')
+    exploded_heatmap['team_impacted'] = exploded_heatmap['team_impacted'].str.strip()
+
+    # Count each team-risk pair only once
+    heatmap_data = exploded_heatmap.drop_duplicates(subset=['submission_id', 'team_impacted', 'risk'])
+    heatmap_data = heatmap_data.groupby(['team_impacted', 'risk']).size().unstack(fill_value=0)
+    heatmap_data = heatmap_data.reindex(columns=["High Risk", "Medium Risk", "Low Risk"], fill_value=0)
+
+    # Plot
+    fig2, ax2 = plt.subplots(figsize=(10, 6))
+    sns.heatmap(heatmap_data, annot=True, fmt="d", cmap="Blues", ax=ax2)
+    ax2.set_title("Heatmap: Risk vs Team Impacted")
+    st.pyplot(fig2)
+    st.dataframe(heatmap_data)
+
+    # --- Heatmap: Risk vs Team Impacted ---
+    st.subheader("Heatmap: Risk vs Team Impacted")
+
     # Work on a copy
     heatmap_df = df[['submission_id', 'risk', 'team_impacted']].drop_duplicates()
 
