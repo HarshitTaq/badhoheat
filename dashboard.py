@@ -85,7 +85,7 @@ if uploaded_file is not None:
     obs_counts = question_df['observation'].value_counts()
     fig3, ax3 = plt.subplots()
     ax3.pie(obs_counts, labels=obs_counts.index, colors=["#1f77b4", "orange"], autopct='%1.1f%%')
-    ax3.set_title("Observation Distribution")
+   
     st.pyplot(fig3)
     st.dataframe(obs_counts.rename("Count"))
 
